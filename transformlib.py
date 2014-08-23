@@ -3,6 +3,22 @@ import copy,types,string,re,datetime
 import logging
 logger=logging.getLogger(__file__)
 
+""" 
+A transformerFunc is a function that gets (key,value,dict) and returns
+a dict that can be used to update the dict These functions can be bundled in
+a transformer object.
+
+Example:
+
+	make all keys lower case
+
+	b=Transformer()
+	b.append(re.compile('.*'), lambda a,b,c: { a: None, string.lower(a) : b})
+
+	b({ 'Hallo' : 0 }) -> { 'hallo' : 0 }
+
+
+"""
 
 
 def funcTransformer(f) :
