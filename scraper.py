@@ -5,6 +5,7 @@ import os,sys
 import logging
 from sqlite3 import OperationalError
 import datetime
+import copy,types,time
 
 logging.basicConfig(level=logging.DEBUG,file=sys.stdout,format='%(levelname)s %(asctime)-15s %(filename)s %(lineno)s %(message)s')
 logger=logging.getLogger(os.path.split(__file__)[1])
@@ -40,6 +41,11 @@ def scrape_now() :
 sc=0
 
 scrape_now()
+if "proxy" in sys.argv :
+	proxy=True
+else :
+	proxy=None
+
 
 mid=dt.execute("select max(id) as c from events")[0]["c"]
 mid=778540
@@ -49,7 +55,13 @@ done={}
 samestatus=0
 lstatus=""
 start=datetime.datetime.now()
-
+last={ 
+				'tc' : dt.execute("select count(*) as c from events")[0]["c"],
+				'pc' : dt.execute("select count(*) as c from events where numposts>0")[0]["c"],
+				'mid' : dt.execute("select max(id) as c from events")[0]["c"],
+				'err' : err,
+				'stamp' : datetime.datetime.now()
+		}
 while True :
 	idt="%s" % random.randrange(1,mid)
 	if idt in done :
@@ -61,19 +73,40 @@ while True :
 			sc=sc+1
 			done[idt]=1
 		else :
-			try :
-				dt.upsert(eventdata(idt),"events")
-			except Exception, e:
-				logger.exception("ERROR %s " % (idt,))
-				err+=1
+			retry=0
+			success=False
+			while success==False and retry<3 :
+				try :
+					dt.upsert(eventdata(idt,proxy=proxy),"events")
+					success=True
+				except OperationalError :
+					retry += 1
+					time.sleep(1)
+					logger.error("Retrying #%s" % retry)
+				except Exception, e:
+					logger.exception("ERROR %s " % (idt,))
+					err+=1
 			sc=sc+1
 	if (sc % 100)==0 :
 		nn=scrape_now()
-		tc=dt.execute("select count(*) as c from events")
-		pc=dt.execute("select count(*) as c from events where numposts>0")
-		mc=dt.execute("select max(id) as c from events")
-		mid=mc[0]["c"]
-		status="################ %s of %s scraped, %s with posts, %s with errors" % (tc[0]["c"],mid,pc[0]["c"],err)
+		stats={ 
+				'tc' : dt.execute("select count(*) as c from events")[0]["c"],
+				'pc' : dt.execute("select count(*) as c from events where numposts>0")[0]["c"],
+				'mid' : dt.execute("select max(id) as c from events")[0]["c"],
+				'err' : err,
+				'stamp' : datetime.datetime.now()
+		}
+		status="################ %(tc)s of %(mid)s scraped, %(pc)s with posts, %(err)s with errors" % stats
+		if last :
+			delta={}
+			for k in stats.keys() :
+				delta[k]=stats[k]-last[k]
+			for k in delta.keys() :
+				if type(delta[k]) in (types.IntType,types.LongType, types.StringType) :
+					delta["speed_%s" % k]=float(delta[k])/(float(delta["stamp"].seconds)/60)
+			delta["complete"]=100*(float(stats["tc"])/float(stats["mid"]))
+			status += " +%(pc)s with posts (%(speed_pc).1f/min), +%(tc)s (%(speed_tc).1f/min) scraped; %(complete).2f %% complete" % delta
+		last=copy.deepcopy(stats)
 		logger.info(status)
 		if status==lstatus :
 				samestatus+=1

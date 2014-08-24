@@ -12,14 +12,14 @@ import logging
 logger=logging.getLogger(__name__)
 
 
-# proxy  = { 'http':'127.0.0.1:8118' }
-proxy={}
+tor_proxy  = { 'http':'http://127.0.0.1:8118' }
+# proxy={}
 header = { "user-agent" : "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0; chromeframe/12.0.742.112)" }
 token = { 'sss@gmx.info' : "1fNpNSiw", 'spon' : "4BA1IOGz", "pool" : ['GukMuRA7', "4BA1IOGz", "1fNpNSiw" ], "sinfalta@mailinator.com" : 'GukMuRA7' } #cAISsODRE sinfalta@mailinator.com
 
 # 
 
-def eventdata_web(eid) :
+def eventdata_web(eid,proxy=None) :
     er={}
     if eid[0]>="0" and eid[0]<="9" :
         url="http://www.scribblelive.com/Event/Thread.aspx?Id=%s" % eid
@@ -52,8 +52,9 @@ def eventdata_web(eid) :
     return er
 
 
-def eventdata_api(eid) :
+def eventdata_api(eid,proxy=None) :
     a=requests.get("http://apiv1.scribblelive.com/event/%s/?Token=%s&callback=g" % (eid,token["sinfalta@mailinator.com"]),proxies=proxy,headers=header)
+	# logger.debug("#### api event data %s" % eid)
     if a.status_code==403 :
 		return { "id" : eid, "error" : "API: 403 forbidden" }
     else :
@@ -89,17 +90,19 @@ translate = Transformer(((  'time'                                    , lambda a
                        ))
 
                  
-def eventdata(eid,api=True,web=True) :
-    if not web :
-        m=eventdata_api(eid)
+def eventdata(eid,api=True,web=True,proxy=None) :
+    if proxy :
+        proxy=tor_proxy
+	if not web :
+		m=eventdata_api(eid,proxy=proxy)
     else :
-		m=eventdata_web(eid)
+		m=eventdata_web(eid,proxy=proxy)
 		if not ("error" in m and m["error"].find("404")>0) :
 			tid=m.get("ThreadId","")
 			if not tid :
 				tid=m.get("id","")
 			if api and re.search("^\d+$",tid) and not ("error" in m and m["error"].find("404")>0) :
-				m.update(eventdata_api(tid))
+				m.update(eventdata_api(tid,proxy=proxy))
 				if not "who" in m or len(m["who"])==0 :
 					try :
 						rp=recentposts(tid).get("Posts",[])
@@ -107,6 +110,8 @@ def eventdata(eid,api=True,web=True) :
 						rp=[]
 					if len(rp)>0 :
 						m["who"]=[ rp[0]["CreatorName"], ]
+			else :
+				logger.debug("### Error, no api data %s,%s" % (tid,repr(m)))
     if ('time' in m) and (type(m['time']) == type([])) :
         m['time']=m['time'][0]
     # logger.debug(pprint.pformat(m))
@@ -137,5 +142,6 @@ def listevents() :
 #    l.update(eventdata(l["url"]))
 #    print l :
 if __name__=='__main__' :    
-	print eventdata("202752")
+	print eventdata_api("202752")
+	print eventdata_api("399656")
 	#print eventdata("173569",api=False),"\n\n",eventdata("120285"),"\n\n",eventdata("179163",api=False),"\n\n",eventdata("120285",web=False)
