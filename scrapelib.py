@@ -84,7 +84,7 @@ class TextParser(AddToEditorChainClass) :
 			m=r.search(i)
 			if m :
 				return m.groupdict()
-		return None 
+		return {}
 
 
 	def __call__(self,i) :
@@ -154,7 +154,10 @@ class TreeScraper :
 				self.tree=etree.fromstring(ss,myparser())
 			else :
 				if kwargs:
-					r=requests.get(ss,**kwargs)
+					if "data" in kwargs :
+						r=requests.post(ss,**kwargs)
+					else :
+						r=requests.get(ss,**kwargs)
 					r.raise_for_status()
 					self.tree=etree.fromstring(r.content,myparser())
 				else :
