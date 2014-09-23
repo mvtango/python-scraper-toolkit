@@ -148,7 +148,12 @@ class TreeScraper :
 	""" Class that parses URL into lxml tree and extracts CSS / Xpath
 	"""
 	
-	def __init__(self, ss,**kwargs) :
+	def __init__(self, *args,**kwargs) :
+		if len(args)>0 :
+			self.fetch(args[0],**kwargs)
+
+
+	def fetch(self,ss,**kwargs) :
 		if type(ss) in types.StringTypes :
 			if len(ss)>0 and ss[0]=="<" :
 				self.tree=etree.fromstring(ss,myparser())
@@ -166,6 +171,9 @@ class TreeScraper :
 			self.tree=etree.parse(ss,myparser())
 
 
+	def debuglevel(self,i) :
+		import httplib
+		httplib.HTTPConnection.debuglevel = i
 
 	def select(self,p) :
 		try :
