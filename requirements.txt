@@ -1,0 +1,13 @@
+Mako==1.0.0
+MarkupSafe==0.23
+PyYAML==3.11
+SQLAlchemy==0.9.7
+Unidecode==0.04.16
+alembic==0.6.7
+argparse==1.2.1
+cssselect==0.9.1
+dataset==0.5.5
+lxml==3.4.0
+python-slugify==0.0.9
+requests==2.4.1
+wsgiref==0.1.2
