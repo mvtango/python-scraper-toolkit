@@ -5,6 +5,7 @@ logging.basicConfig(level=logging.DEBUG)
 from scrapelib import TreeScraper, TextParser
 logger=logging.getLogger(__name__)
 from insertversioned import update_if_different 
+import random
 
 DEBUG=0
 
@@ -31,28 +32,24 @@ def depts() :
 	t=TreeScraper()
 	if DEBUG :
 		t.debuglevel(1)
-	try :
-		t.fetch(url,data=data,headers=headers)
-	except Exception, e:
-		logger.exception(e)
-	else :
-		# return t.extract("table#mainContent a",link="a[@href]",text="a/text()")
-		all=t.extract("#mainContent a",text="./text()",link="./@href")
-		for dep in all :
-			dep["path"]=dep.get("text","").split("; ")
-			dep["depth"]=len(dep["path"])
-			if len(dep["path"])>0 :
-				dep["name"]=dep["path"][-1]
-			else :
-				dep["name"]=None
-			if len(dep["path"])>1 :
-				dep["parent"]=dep["path"][-2]
-			else :
-				dep["parent"]=None
-			dep.update(parsedeplink(dep["link"]))
-			del dep["path"]
-			del dep["link"]
-		return all
+	t.fetch(url,data=data,headers=headers)
+	# return t.extract("table#mainContent a",link="a[@href]",text="a/text()")
+	all=t.extract("#mainContent a",text="./text()",link="./@href")
+	for dep in all :
+		dep["path"]=dep.get("text","").split("; ")
+		dep["depth"]=len(dep["path"])
+		if len(dep["path"])>0 :
+			dep["name"]=dep["path"][-1]
+		else :
+			dep["name"]=None
+		if len(dep["path"])>1 :
+			dep["parent"]=dep["path"][-2]
+		else :
+			dep["parent"]=None
+		dep.update(parsedeplink(dep["link"]))
+		del dep["path"]
+		del dep["link"]
+	return all
 
 def pers(depid) :
 	t=TreeScraper()
@@ -70,15 +67,13 @@ def pers(depid) :
 			del per["link"]
 	return filter(lambda a: a, all)
 
-if __name__=='__main__' :
-	import sys
-	logging.basicConfig(file=sys.stderr,level=logging.DEBUG)
-	import pprint
-	db=dataset.connect("sqlite:///data.db")
+
+def runspider(db) :
 	tables={ "dept" : db["dept"], "pers" : db["pers"] }
 	depl=depts()
 	update={ "dept" :[], "pers" : []}
 	firstrun=True
+	random.shuffle(depl)
 	for d in depl :
 		update["dept"].append(update_if_different(tables["dept"],d,["nid"],"versions"))
 		for p in pers(d["nid"]) :
@@ -88,5 +83,17 @@ if __name__=='__main__' :
 		else :
 			firstrun=False
 		db.begin()
-	pprint.pprint(update)
+		logger.info("{pers} persons, {pupdate} updated; {deps} depts, {dupdate} updated".format(pers=len(update["pers"]),pupdate=len(filter(lambda a: a, update["pers"])), deps=len(update["dept"]),dupdate=len(filter(lambda a: a, update["dept"]))))
+	return update
 
+
+if __name__=='__main__' :
+	import sys
+	logging.basicConfig(file=sys.stderr,level=logging.DEBUG)
+	import pprint
+	try:
+		db=dataset.connect("sqlite:///data.db")
+		update=runspider(db)
+	except Exception,e:
+		logger.exception(e)	
+	logger.info("{pers} persons, {pupdate} updated; {deps} depts, {dupdate} updated".format(pers=len(update["pers"]),pupdate=len(filter(lambda a: a, update["pers"])), deps=len(update["dept"]),dupdate=len(filter(lambda a: a, update["dept"]))))
