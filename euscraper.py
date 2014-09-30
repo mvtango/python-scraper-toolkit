@@ -1,7 +1,8 @@
 import dataset
 import sys
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(name)s %(filename)s:%(lineno)s %(message)s')
+
 from scrapelib import TreeScraper, TextParser
 logger=logging.getLogger(__name__)
 from insertversioned import update_if_different 
@@ -26,7 +27,7 @@ data='datatype=entity&datalang=de&lang=de&orderby=NOM&newSearch=true&institution
 url='http://europa.eu/whoiswho/public/index.cfm?fuseaction=idea.search_entity'
 
 parsedeplink=TextParser("nodeID=(?P<nid>\d+)")
-parseperslink=TextParser("nodeID=(?P<pid>\d+)")
+parseperslink=TextParser("personID=(?P<pid>\d+)")
 
 def depts() :
 	t=TreeScraper()
@@ -49,7 +50,7 @@ def depts() :
 		dep.update(parsedeplink(dep["link"]))
 		del dep["path"]
 		del dep["link"]
-	return all
+	return filter(lambda a: a.get("nid",None),all)
 
 def pers(depid) :
 	t=TreeScraper()
@@ -77,7 +78,7 @@ def runspider(db) :
 	for d in depl :
 		update["dept"].append(update_if_different(tables["dept"],d,["nid"],"versions"))
 		for p in pers(d["nid"]) :
-			update["pers"].append(update_if_different(tables["pers"],p,["pid"],"versions"))
+			update["pers"].append(update_if_different(tables["pers"],p,["pid","nid"],"versions"))
 		if not firstrun :
 			db.commit()
 		else :
@@ -91,6 +92,7 @@ if __name__=='__main__' :
 	import sys
 	logging.basicConfig(file=sys.stderr,level=logging.DEBUG)
 	import pprint
+	update={"dept": [], "pers" : []}
 	try:
 		db=dataset.connect("sqlite:///data.db")
 		update=runspider(db)
