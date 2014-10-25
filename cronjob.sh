@@ -1,8 +1,10 @@
-!#/bin/bash
+#! /bin/bash
 
-cd ~/projekte/eurowhoiswho/scraper
+P=~/projekte/euwhoiswho
 
-LOGDIR=logs
+cd $P/scraper 
+
+LOGDIR=$P/scraper/logs
 
 . ~/venv/bin/activate
 python ./euscraper.py >$LOGDIR/`date +%Y%m%d%H%M%S`-euscraper.log 2>&1 
