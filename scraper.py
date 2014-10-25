@@ -48,7 +48,7 @@ else :
 
 
 mid=dt.execute("select max(id) as c from events")[0]["c"]
-mid=778540
+mid=795871 #794230 # 778540
 err=0
 lmid=mid
 done={}
@@ -83,36 +83,43 @@ while True :
 					retry += 1
 					time.sleep(1)
 					logger.error("Retrying #%s" % retry)
+				except KeyboardInterrupt :
+					raise
 				except Exception, e:
 					logger.exception("ERROR %s " % (idt,))
 					err+=1
 			sc=sc+1
 	if (sc % 100)==0 :
 		nn=scrape_now()
-		stats={ 
-				'tc' : dt.execute("select count(*) as c from events")[0]["c"],
-				'pc' : dt.execute("select count(*) as c from events where numposts>0")[0]["c"],
-				'mid' : dt.execute("select max(id) as c from events")[0]["c"],
-				'err' : err,
-				'stamp' : datetime.datetime.now()
-		}
-		status="################ %(tc)s of %(mid)s scraped, %(pc)s with posts, %(err)s with errors" % stats
-		if last :
-			delta={}
-			for k in stats.keys() :
-				delta[k]=stats[k]-last[k]
-			for k in delta.keys() :
-				if type(delta[k]) in (types.IntType,types.LongType, types.StringType) :
-					delta["speed_%s" % k]=float(delta[k])/(float(delta["stamp"].seconds)/60)
-			delta["complete"]=100*(float(stats["tc"])/float(stats["mid"]))
-			status += " +%(pc)s with posts (%(speed_pc).1f/min), +%(tc)s (%(speed_tc).1f/min) scraped; %(complete).2f %% complete" % delta
-		last=copy.deepcopy(stats)
-		logger.info(status)
-		if status==lstatus :
-				samestatus+=1
-				if samestatus>999 : # or nn==0 
-					break
-		else :
-			lstatus=status
-			samestatus=0
+		try :
+			stats={ 
+					'tc' : dt.execute("select count(*) as c from events")[0]["c"],
+					'pc' : dt.execute("select count(*) as c from events where numposts>0")[0]["c"],
+					'mid' : dt.execute("select max(id) as c from events")[0]["c"],
+					'err' : err,
+					'stamp' : datetime.datetime.now()
+			}
+			status="################ %(tc)s of %(mid)s scraped, %(pc)s with posts, %(err)s with errors" % stats
+			if last :
+				delta={}
+				for k in stats.keys() :
+					delta[k]=stats[k]-last[k]
+				for k in delta.keys() :
+					if type(delta[k]) in (types.IntType,types.LongType, types.StringType) :
+						delta["speed_%s" % k]=float(delta[k])/(float(delta["stamp"].seconds)/60)
+				delta["complete"]=100*(float(stats["tc"])/float(stats["mid"]))
+				status += " +%(pc)s with posts (%(speed_pc).1f/min), +%(tc)s (%(speed_tc).1f/min) scraped; %(complete).2f %% complete" % delta
+			last=copy.deepcopy(stats)
+			logger.info(status)
+			if status==lstatus :
+					samestatus+=1
+					if samestatus>999 : # or nn==0 
+						break
+			else :
+				lstatus=status
+				samestatus=0
+		except KeyboardInterrupt : 
+			raise
+		except Exception,e :
+			logger.exception("During stat")
 logger.info("finished after %s seconds" %	(datetime.datetime.now()-start,))	
