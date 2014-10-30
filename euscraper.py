@@ -1,6 +1,6 @@
 import dataset
 import sys
-import logging
+import logging,requests
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(name)s %(filename)s:%(lineno)s %(message)s')
 
 from scrapelib import TreeScraper, TextParser
@@ -57,10 +57,14 @@ def pers(depid) :
 	t=TreeScraper()
 	if DEBUG :
 		t.debuglevel(1)
-	t.fetch("http://europa.eu/whoiswho/public/index.cfm?fuseaction=idea.hierarchy&nodeID=%s" % depid, headers=headers)
-	all=t.extract("table#mainContent li",link="./a[contains(@href,'personID')]/@href",
-					     name="./a[contains(@href,'personID')]/text() ",
-                                             func="./text()")
+	try :
+		t.fetch("http://europa.eu/whoiswho/public/index.cfm?fuseaction=idea.hierarchy&nodeID=%s" % depid, headers=headers)
+		all=t.extract("table#mainContent li",link="./a[contains(@href,'personID')]/@href",
+						     name="./a[contains(@href,'personID')]/text() ",
+						     func="./text()")
+	except requests.HTTPError :
+		logger.exception()
+		all=[]
 	for per in all :
 		if per :
 			per["func"]=per["func"][1]
