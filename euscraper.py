@@ -1,5 +1,5 @@
 import dataset
-import sys
+import sys, time
 import logging,requests
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(name)s %(filename)s:%(lineno)s %(message)s')
 
@@ -34,7 +34,15 @@ def depts() :
 	t=TreeScraper()
 	if DEBUG :
 		t.debuglevel(1)
-	t.fetch(url,data=data,headers=headers)
+	for tries in xrange(0,5) :
+		try :
+			t.fetch(url,data=data,headers=headers)
+		except Exception,e :
+			logger.exception(e)
+			logger.debug("Try #%s after 5 seconds" % tries)
+			time.sleep(5)
+		else :
+			break
 	# return t.extract("table#mainContent a",link="a[@href]",text="a/text()")
 	all=t.extract("#mainContent a",text="./text()",link="./@href")
 	for dep in all :
@@ -62,8 +70,8 @@ def pers(depid) :
 		all=t.extract("table#mainContent li",link="./a[contains(@href,'personID')]/@href",
 						     name="./a[contains(@href,'personID')]/text() ",
 						     func="./text()")
-	except requests.HTTPError :
-		logger.exception()
+	except requests.HTTPError,e :
+		logger.exception(e)
 		all=[]
 	for per in all :
 		if per :
