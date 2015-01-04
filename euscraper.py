@@ -10,6 +10,9 @@ import random
 
 DEBUG=0
 LANG="en"
+MAXTRIES=5
+SLEEP=5
+
 
 initial_curl="""curl 'http://europa.eu/whoiswho/public/index.cfm?fuseaction=idea.search_entity' -H 'Pragma: no-cache' -H 'Origin: http://europa.eu' -H 'Accept-Encoding: gzip,deflate' -H 'Accept-Language: en;q=0.8,en;q=0.6,es;q=0.4' -H 'User-Agent: Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.120 Safari/537.36' -H 'Content-Type: application/x-www-form-urlencoded' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8' -H 'Cache-Control: no-cache' -H 'Referer: http://europa.eu/whoiswho/public/index.cfm?fuseaction=idea.entity' -H 'Cookie: CFID=121410243; CFTOKEN=65187697; JSESSIONID=38059ae293d871573d42' -H 'Connection: keep-alive' --data 'datatype=entity&datalang=de&lang=de&orderby=NOM&newSearch=true&institution=10&entity_name=&RES_MAX=90000&btnSearch=Suche' --compressed"""
 
@@ -34,13 +37,13 @@ def depts() :
 	t=TreeScraper()
 	if DEBUG :
 		t.debuglevel(1)
-	for tries in xrange(0,5) :
+	for tries in xrange(0,MAXTRIES+1) :
 		try :
 			t.fetch(url,data=data,headers=headers)
 		except Exception,e :
 			logger.exception(e)
-			logger.debug("Try #%s after 5 seconds" % tries)
-			time.sleep(5)
+			logger.debug("Try #%s after %s seconds" % (tries,SLEEP))
+			time.sleep(SLEEP)
 		else :
 			break
 	# return t.extract("table#mainContent a",link="a[@href]",text="a/text()")
@@ -65,20 +68,28 @@ def pers(depid) :
 	t=TreeScraper()
 	if DEBUG :
 		t.debuglevel(1)
-	try :
-		t.fetch("http://europa.eu/whoiswho/public/index.cfm?fuseaction=idea.hierarchy&nodeID=%s" % depid, headers=headers)
-		all=t.extract("table#mainContent li",link="./a[contains(@href,'personID')]/@href",
-						     name="./a[contains(@href,'personID')]/text() ",
-						     func="./text()")
-	except requests.HTTPError,e :
-		logger.exception(e)
-		all=[]
+	all=[]
+	tries=1
+	while tries<MAXTRIES and all==[] :
+		try :
+			t.fetch("http://europa.eu/whoiswho/public/index.cfm?fuseaction=idea.hierarchy&nodeID=%s" % depid, headers=headers)
+			all=t.extract("table#mainContent li",link="./a[contains(@href,'personID')]/@href",
+							     name="./a[contains(@href,'personID')]/text() ",
+							     func="./text()")
+			break
+		except (requests.HTTPError,requests.ConnectionError) as e :
+			logger.error("Error while fetching depid #%s, tried %s times" % (depid,tries))
+			logger.exception(e)
+			all=[]
+			tries=tries+1
+			time.sleep(SLEEP)
 	for per in all :
 		if per :
 			per["func"]=per["func"][1]
 			per.update(parseperslink(per["link"]))
 			per.update(parsedeplink(per["link"]))
 			del per["link"]
+	# logger.debug("ID %s %s" % (depid,repr(all)))
 	return filter(lambda a: a, all)
 
 
