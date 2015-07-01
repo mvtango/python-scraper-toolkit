@@ -13,12 +13,15 @@ Example:
 	make all keys lower case
 
 	b=Transformer()
-	b.append(re.compile('.*'), lambda a,b,c: { a: None, string.lower(a) : b})
+	b.append(re.compile('.*'), lambda a,b,c: { a: DeleteThis, string.lower(a) : b})
 
 	b({ 'Hallo' : 0 }) -> { 'hallo' : 0 }
 
 
 """
+
+class DeleteThis :
+	pass
 
 
 def funcTransformer(f) :
@@ -75,7 +78,7 @@ class Transformer :
 							logger.exception("Exception transforming '%s'" % kt)
 						break
 		for (k,v) in b.items() :
-			if b[k] is None :
+			if b[k] is DeleteThis :
 				del(b[k])
 		return b
 		
@@ -89,13 +92,13 @@ if __name__=='__main__' :
 	def js_to_timestamp(a) :
 		return datetime.datetime.fromtimestamp(int(re.search(r"(?P<time>\d+)",a).groupdict()["time"])/1000)
 	test_object={'End': '/Date(1370963382000+0000)/', 'dd' : '4/4/2010 4:20:20 am', 'Language': 'de', 'Title': u'Fussball L\xe4nderspiel der Frauen', 'IsCommenting': 1, 'LastModified': '/Date(1370963403180+0000)/', 'Discussion': {'Moderated': 0, 'Enabled': 0}, 'IsSyndicatable': 0, 'Websites': [{'Url': 'http://www.scribblelive.com/Event/Fussball_Landerspiel_der_Frauen', 'Id': 1, 'Name': 'ScribbleLive'}], 'Start': '/Date(1370962800000+0000)/', 'NumPosts': 5, 'IsLive': 0, 'NumComments': 3, 'IsSyndicated': 0, 'id': '120285', 'IsModerated': 1, 'Description': 'Deutschland gegen Schottland', 'title': 'Sorry, that live event was not found', 'Created': '/Date(1370873423000+0000)/', 'Id': 120285, 'Meta': {}, 'SyndicatedComments': 0, 'Pages': 1, 'IsDeleted': 1} 
-	t=Transformer(((  'time'                                    , lambda a,b,c:  { a: None,  'stime' : datetime.datetime.strptime(b, "%m/%d/%Y %I:%M:%S %p") }),
-                        (   'Time'                                    , lambda a,b,c:  { a: None,  'mtime' : datetime.datetime.strptime(b, "%m/%d/%Y %I:%M:%S %p") }),
-                        (   'Title'                                   , lambda a,b,c:  { a: None,  'metatitle' : b }),
-                        (   'ThreadId'                                , lambda a,b,c:  { a: None,  'id' : b }),
+	t=Transformer(((  'time'                                    , lambda a,b,c:  { a: DeleteThis,  'stime' : datetime.datetime.strptime(b, "%m/%d/%Y %I:%M:%S %p") }),
+                        (   'Time'                                    , lambda a,b,c:  { a: DeleteThis,  'mtime' : datetime.datetime.strptime(b, "%m/%d/%Y %I:%M:%S %p") }),
+                        (   'Title'                                   , lambda a,b,c:  { a: DeleteThis,  'metatitle' : b }),
+                        (   'ThreadId'                                , lambda a,b,c:  { a: DeleteThis,  'id' : b }),
                         (  re.compile('^End|Created|Start|LastModified$')
-                                                                      , lambda a,b,c:  { a: None, string.lower(a) : js_to_timestamp(b) }),
-                        (   re.compile(".*")                          , lambda a,b,c:  { a: None, string.lower(a) : b}),
+                                                                      , lambda a,b,c:  { a: DeleteThis, string.lower(a) : js_to_timestamp(b) }),
+                        (   re.compile(".*")                          , lambda a,b,c:  { a: DeleteThis, string.lower(a) : b}),
                         
                        ))
 	print t.transform(test_object)
