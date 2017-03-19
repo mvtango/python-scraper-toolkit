@@ -1,0 +1,24 @@
+
+#content-main > div.teaser.hp-first-article.pano_xxl.clearfix > div > h2
+
+
+//*[@id="content-main"]/div[2]/div/h2
+
+
+
+- name: Spiegel Online
+  url: https://www.spiegel.de
+  parts: 
+    - name: Aufmacher
+      select: .hp-first-article h2
+      title: ".//@title"
+      link:  ".//@href"
+
+
+- name: welt.de
+  url: https://www.welt.de
+  parts: 
+     - name: Aufmacher
+       select: .o-teaser__link
+
+
